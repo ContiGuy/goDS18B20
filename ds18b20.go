@@ -2,7 +2,6 @@ package goDS18B20
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
