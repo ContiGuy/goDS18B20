@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/pkg/errors"
 )
 
 const (
@@ -18,6 +20,7 @@ const (
 	modprobeCmd  = `/sbin/modprobe`
 	w1thermMod   = `w1-therm`
 	w1gpioMod    = `w1-gpio`
+	w1gpioPullup = `pullup=1`
 	masterPrefix = `w1_bus_master`
 	slavePrefix  = `28-`
 )
@@ -49,21 +52,25 @@ type ProbeGroup struct {
 
 //Setup will ensure the w1-gpio and w1-therm modules are loaded
 //and ensure that there is at least one w1_bus_masterX present
-func Setup() error {
-	//ensure the modules are loaded
-	cmd := exec.Command(modprobeCmd, w1gpioMod)
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-	cmd = exec.Command(modprobeCmd, w1thermMod)
-	if err := cmd.Run(); err != nil {
-		return err
+func Setup(modprobe bool) error {
+	if modprobe {
+		//ensure the modules are loaded
+		cmd := exec.Command(modprobeCmd, w1gpioMod, w1gpioPullup)
+		if err := cmd.Run(); err != nil {
+			return errors.Wrap(err, modprobeCmd+" "+w1gpioMod+" "+w1gpioPullup)
+		}
+		cmd = exec.Command(modprobeCmd, w1thermMod)
+		if err := cmd.Run(); err != nil {
+			// return err
+			return errors.Wrap(err, modprobeCmd+" "+w1thermMod)
+		}
 	}
 
 	//check that the 1 wire master device is present
 	fis, err := ioutil.ReadDir(basePath)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "ReadDir "+basePath)
+		// return err
 	}
 	masterPresent := false
 	for i := range fis {
